@@ -35,10 +35,19 @@ jobs:
           # Ajouter l'hôte à known_hosts pour éviter l'erreur de type "host verification"
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+      # Démarrer ssh-agent et ajouter la clé avec passphrase
+      - name: Start ssh-agent and add private key
+        run: |
+          # Démarre le ssh-agent
+          eval $(ssh-agent -s)
+
+          # Ajoute la clé privée avec la passphrase (la passphrase est stockée dans un secret)
+          echo "${{ secrets.SSH_PRIVATE_KEY_PASSPHRASE }}" | ssh-add <(echo "$SSH_PRIVATE_KEY")
+
       # Se connecter en SSH à l'instance EC2 et effectuer un git pull
       - name: Deploy application via SSH
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             # Accéder au répertoire de l'application
             cd /home/raph/Training-AWS/
             # Effectuer un git pull pour récupérer les dernières modifications
