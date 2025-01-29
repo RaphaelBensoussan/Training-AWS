@@ -28,9 +28,12 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
 
     # 4. Ajouter l'hôte SSH à known_hosts pour éviter les erreurs
-    - name: Add SSH host to known hosts
+    - name: Set up SSH known hosts
       run: |
+        mkdir -p ~/.ssh
         ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+        chmod 700 ~/.ssh
+        chmod 644 ~/.ssh/known_hosts
 
     # 5. Déploiement via SSH sur l'instance EC2
     - name: Deploy to EC2
