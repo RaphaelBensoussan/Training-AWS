@@ -1,49 +1,50 @@
-name: CI/CD Pipeline
+name: CI Workflow
 
 on:
   push:
     branches:
-      - main  # Déclenche la pipeline sur un push vers la branche main
+      - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # Machine virtuelle Ubuntu pour le job
+    runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout du code source
-    - name: Checkout code
-      uses: actions/checkout@v2
+      # Étape 1 : Vérifier et configurer le dépôt
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    # 2. Mise à jour des paquets et installation de openssh-client
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y openssh-client
+      # Étape 2 : Configuration des clés SSH
+      - name: Set up SSH keys
+        run: |
+          # 1. Créer le répertoire ~/.ssh s'il n'existe pas
+          mkdir -p ~/.ssh
 
-    # 3. Configuration de la clé SSH privée pour se connecter à EC2
-    - name: Setup SSH key
-      run: |
-        mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
+          # 2. Vérifier et afficher la valeur de SSH_HOST pour débogage
+          echo "SSH_HOST: $SSH_HOST"
 
-    # 4. Ajouter l'hôte SSH à known_hosts pour éviter les erreurs
-    - name: Set up SSH known hosts
-      run: |
-        mkdir -p ~/.ssh
-        ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
-        chmod 700 ~/.ssh
-        chmod 644 ~/.ssh/known_hosts
+          # 3. Vérifier si la variable SSH_HOST est définie
+          if [ -z "$SSH_HOST" ]; then
+            echo "ERROR: SSH_HOST is not set"
+            exit 1
+          fi
 
-    # 5. Déploiement via SSH sur l'instance EC2
-    - name: Deploy to EC2
-      run: |
-        ssh -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST << EOF
-          cd $WORK_DIR  # Naviguer vers le répertoire du projet
-          git pull origin $MAIN_BRANCH  # Récupérer les dernières modifications
-        EOF
+          # 4. Ajouter la clé privée SSH dans ~/.ssh/id_rsa
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
 
-    # 6. Nettoyage des fichiers sensibles
-    - name: Clean up
-      run: |
-        rm -rf ~/.ssh
+          # 5. Donner les permissions appropriées à la clé privée
+          chmod 600 ~/.ssh/id_rsa
+
+          # 6. Ajouter l'hôte SSH à known_hosts pour éviter les erreurs de vérification
+          # Afficher un message pour vérifier si l'hôte est bien ajouté
+          echo "Adding SSH host to known_hosts"
+          ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+
+      # Étape 3 : Déploiement sur EC2 via SSH
+      - name: Deploy on EC2
+        run: |
+          echo "Starting deployment on EC2..."
+
+          # Connexion à l'instance EC2 via SSH et exécution du git pull
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST "cd $WORK_DIR && git pull origin $MAIN_BRANCH"
+
