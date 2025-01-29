@@ -34,8 +34,13 @@ jobs:
 
           # Ajouter l'hôte à known_hosts pour éviter l'erreur de type "host verification"
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
-      # Démarrer ssh-agent et ajouter la clé avec passphrase
+      
+      # Démarrer l'agent SSH
+      - name: Start ssh-agent
+        run: |
+          eval $(ssh-agent -s)
+      
+      # Ajouter la clé avec passphrase
       - name: Install expect and handle passphrase
         run: |
           sudo apt-get update
