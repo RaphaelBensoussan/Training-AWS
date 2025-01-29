@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy Application
 
 on:
   push:
@@ -10,44 +10,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Étape 1 : Vérifier la branche 'main'
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      # Étape 2 : Mettre à jour les paquets
-      - name: Update packages
+      # Vérifier les secrets
+      - name: Check secrets
         run: |
-          sudo apt-get update -y
-          sudo apt-get upgrade -y
+          echo "SSH_HOST: ${{ secrets.SSH_HOST }}"
+          echo "SSH_USER: ${{ secrets.SSH_USER }}"
 
-      # Étape 3 : Installer openssh-client
-      - name: Install openssh-client
+      # Installer les paquets nécessaires
+      - name: Install dependencies
         run: |
+          sudo apt-get update
           sudo apt-get install -y openssh-client
 
-      # Étape 4 : Configurer les clés SSH
+      # Créer le répertoire .ssh et configurer les clés SSH
       - name: Set up SSH keys
         run: |
-          # Créer le répertoire ~/.ssh
           mkdir -p ~/.ssh
-
           # Ajouter la clé privée SSH à ~/.ssh/id_rsa
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-
-          # Appliquer les bonnes permissions à la clé privée
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-
-          # Ajouter l'hôte SSH à known_hosts pour éviter les erreurs de vérification
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
-      # Étape 5 : Déployer sur EC2 via SSH
-      - name: Deploy on EC2
+          # Ajouter l'hôte à known_hosts pour éviter les erreurs de type "host verification"
+          ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+          
+      # Test de la clé SSH avec une commande debug
+      - name: Test SSH connection
         run: |
-          # Se connecter à l'instance EC2 et effectuer un git pull pour mettre à jour l'application
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && git pull origin main"
-
-      # Étape 6 : Nettoyage du répertoire .ssh
-      - name: Clean up SSH keys
+          echo "Testing SSH connection..."
+          ssh -v -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST "exit"
+        
+      # Se connecter en SSH et exécuter git pull
+      - name: Deploy application via SSH
         run: |
-          # Supprimer le répertoire .ssh pour des raisons de sécurité
+          echo "Deploying application..."
+          ssh -v -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST << 'EOF'
+            cd /path/to/your/application
+            git pull origin main
+            # Ajouter d'autres commandes pour déployer, si nécessaire
+          EOF
+
+      # Supprimer les fichiers .ssh
+      - name: Clean up
+        run: |
           rm -rf ~/.ssh
