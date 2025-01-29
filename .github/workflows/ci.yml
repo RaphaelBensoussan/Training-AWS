@@ -35,12 +35,6 @@ jobs:
           # Ajouter l'hôte à known_hosts pour éviter l'erreur de type "host verification"
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      # Test de la connexion SSH pour s'assurer que la clé privée fonctionne
-      - name: Test SSH connection
-        run: |
-          echo "Testing SSH connection..."
-          ssh -v -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "exit"
-
       # Se connecter en SSH à l'instance EC2 et effectuer un git pull
       - name: Deploy application via SSH
         run: |
