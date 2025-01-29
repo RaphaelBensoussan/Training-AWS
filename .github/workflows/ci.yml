@@ -29,7 +29,7 @@ jobs:
           mkdir -p ~/.ssh
 
           # Ajouter la clé privée SSH en utilisant le secret
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 -w 0 > ~/.ssh/ssh_aws
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 --decode > ~/.ssh/ssh_aws
           chmod 600 ~/.ssh/ssh_aws
 
           # Ajouter l'hôte à known_hosts pour éviter l'erreur de type "host verification"
