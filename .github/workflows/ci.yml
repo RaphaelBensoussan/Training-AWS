@@ -41,7 +41,7 @@ jobs:
           echo "Deploying application..."
           ssh -v -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             # Accéder au répertoire de l'application
-            cd /path/to/your/application
+            cd /home/raph/Training-AWS/
             # Effectuer un git pull pour récupérer les dernières modifications
             git pull origin main
             # Ajouter d'autres commandes pour déployer, si nécessaire
