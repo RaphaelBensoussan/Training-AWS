@@ -42,7 +42,7 @@ jobs:
           eval $(ssh-agent -s)
 
           # Ajoute la clé privée avec la passphrase (la passphrase est stockée dans un secret)
-          echo "${{ secrets.SSH_PRIVATE_KEY_PASSPHRASE }}" | ssh-add <(echo "$SSH_PRIVATE_KEY")
+          echo "${{ secrets.SSH_PRIVATE_KEY_PASSPHRASE }}" | ssh-add <(echo "${{ secrets.SSH_PRIVATE_KEY }}")
 
       # Se connecter en SSH à l'instance EC2 et effectuer un git pull
       - name: Deploy application via SSH
