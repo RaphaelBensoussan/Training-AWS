@@ -43,7 +43,7 @@ jobs:
             cd /home/raph/Training-AWS/
             # Effectuer un git pull pour récupérer les dernières modifications
             git pull origin main
-
+          EOF
 
       # Supprimer le répertoire .ssh pour des raisons de sécurité après le déploiement
       - name: Clean up SSH keys
