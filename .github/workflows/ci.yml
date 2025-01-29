@@ -34,25 +34,6 @@ jobs:
 
           # Ajouter l'hôte à known_hosts pour éviter l'erreur de type "host verification"
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-      
-      # Démarrer l'agent SSH
-      - name: Start ssh-agent
-        run: |
-          eval $(ssh-agent -s)
-      
-      # Ajouter la clé avec passphrase
-      - name: Install expect and handle passphrase
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y expect
-
-          # Utiliser 'expect' pour entrer la passphrase lors de l'ajout de la clé SSH
-          expect <<EOF
-            spawn ssh-add ~/.ssh/id_rsa
-            expect "Enter passphrase for"
-            send "${{ secrets.SSH_PRIVATE_KEY_PASSPHRASE }}\r"
-            expect eof
-          EOF
 
       # Se connecter en SSH à l'instance EC2 et effectuer un git pull
       - name: Deploy application via SSH
