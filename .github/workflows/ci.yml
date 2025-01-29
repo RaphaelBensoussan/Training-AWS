@@ -38,14 +38,12 @@ jobs:
       # Se connecter en SSH à l'instance EC2 et effectuer un git pull
       - name: Deploy application via SSH
         run: |
-          echo "Deploying application..."
           ssh -v -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             # Accéder au répertoire de l'application
             cd /home/raph/Training-AWS/
             # Effectuer un git pull pour récupérer les dernières modifications
             git pull origin main
-            # Ajouter d'autres commandes pour déployer, si nécessaire
-          EOF
+
 
       # Supprimer le répertoire .ssh pour des raisons de sécurité après le déploiement
       - name: Clean up SSH keys
