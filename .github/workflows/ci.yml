@@ -10,45 +10,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Vérifier les secrets
+      # Vérification des secrets pour s'assurer qu'ils sont chargés
       - name: Check secrets
         run: |
           echo "SSH_HOST: ${{ secrets.SSH_HOST }}"
           echo "SSH_USER: ${{ secrets.SSH_USER }}"
 
-      # Installer les paquets nécessaires
+      # Installer les dépendances nécessaires
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y openssh-client
 
-      # Créer le répertoire .ssh et configurer les clés SSH
+      # Créer le répertoire .ssh et configurer la clé privée SSH
       - name: Set up SSH keys
         run: |
+          # Créer le répertoire .ssh
           mkdir -p ~/.ssh
-          # Ajouter la clé privée SSH à ~/.ssh/id_rsa
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+
+          # Ajouter la clé privée SSH en utilisant le secret
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          # Ajouter l'hôte à known_hosts pour éviter les erreurs de type "host verification"
-          ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
-          
-      # Test de la clé SSH avec une commande debug
+
+          # Ajouter l'hôte à known_hosts pour éviter l'erreur de type "host verification"
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      # Test de la connexion SSH pour s'assurer que la clé privée fonctionne
       - name: Test SSH connection
         run: |
           echo "Testing SSH connection..."
-          ssh -v -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST "exit"
-        
-      # Se connecter en SSH et exécuter git pull
+          ssh -v -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "exit"
+
+      # Se connecter en SSH à l'instance EC2 et effectuer un git pull
       - name: Deploy application via SSH
         run: |
           echo "Deploying application..."
-          ssh -v -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST << 'EOF'
+          ssh -v -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            # Accéder au répertoire de l'application
             cd /path/to/your/application
+            # Effectuer un git pull pour récupérer les dernières modifications
             git pull origin main
             # Ajouter d'autres commandes pour déployer, si nécessaire
           EOF
 
-      # Supprimer les fichiers .ssh
-      - name: Clean up
+      # Supprimer le répertoire .ssh pour des raisons de sécurité après le déploiement
+      - name: Clean up SSH keys
         run: |
           rm -rf ~/.ssh
