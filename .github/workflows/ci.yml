@@ -38,11 +38,14 @@ jobs:
       # Se connecter en SSH à l'instance EC2 et effectuer un git pull
       - name: Deploy application via SSH
         run: |
-          ssh -T -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             # Accéder au répertoire de l'application
-            cd /home/raph/Training-AWS/
+            cd ${{ secrets.WORK_DIR}}
             # Effectuer un git pull pour récupérer les dernières modifications
             git pull origin main
+            docker-compose down
+            docker system prune -af
+            docker-compose up --buil -d
           EOF
 
       # Supprimer le répertoire .ssh pour des raisons de sécurité après le déploiement
