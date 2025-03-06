@@ -1,70 +1,149 @@
-# Getting Started with Create React App
+# 📌 Compte rendu du déploiement automatisé
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Ce document décrit les étapes du déploiement automatisé d'une application React sur AWS EC2 en utilisant Docker et GitHub Actions.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## 🔹 1. Préparation et Sécurisation
 
-### `npm start`
+### Génération de clé SSH
+- Création d'une clé SSH pour sécuriser les communications entre l'ordinateur local, GitHub et le serveur AWS.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Configuration du VPS
+- Mise en place d'une instance **EC2 Debian**.
+- Ajout de la clé SSH pour l'authentification.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## 🔹 2. Mise en place de l'infrastructure
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Installation de Docker
+- Installation de Docker sur le VPS.
+- Test de son fonctionnement avec :
+  ```sh
+  docker run hello-world
+  ```
 
-### `npm run build`
+### Configuration de GitHub Actions
+- Création de **secrets** pour stocker les informations sensibles (clé SSH privée, etc.).
+- Configuration du fichier **ci.yml** pour automatiser le déploiement.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 🔹 3. Préparation de l'application
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Création des fichiers Docker
+- Rédaction des fichiers `Dockerfile` et `docker-compose.yml` pour définir l'environnement d'exécution de l'application.
 
-### `npm run eject`
+---
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## 🔹 4. Sécurité et validation
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Configuration de la sécurité AWS
+- Ouverture du **port 5000** pour permettre l'accès à l'application.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Tests finaux
+- Vérification du déploiement après un **push** sur GitHub.
+- Test de l'accès à l'application.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## Script d'automatisation (`ci.yml`)
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```yaml
+name: Deploy Application
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+on:
+  push:
+    branches:
+      - main
 
-### Code Splitting
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+    steps:
+      - name: Check secrets
+        run: |
+          echo "SSH_HOST: ${{ secrets.SSH_HOST }}"
+          echo "SSH_USER: ${{ secrets.SSH_USER }}"
 
-### Analyzing the Bundle Size
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-client
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+      - name: Set up SSH keys
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 --decode > ~/.ssh/ssh_aws
+          chmod 600 ~/.ssh/ssh_aws
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-### Making a Progressive Web App
+      - name: Deploy application via SSH
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd ${{ secrets.WORK_DIR }}
+            git pull origin main
+            docker-compose down
+            docker system prune -af
+            docker-compose up --build -d
+          EOF
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+      - name: Clean up SSH keys
+        run: |
+          rm -rf ~/.ssh
+```
 
-### Advanced Configuration
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Dockerfile
 
-### Deployment
+```dockerfile
+# Utiliser l'image officielle de Node.js comme base
+FROM node:16 AS build
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+# Définir le répertoire de travail
+WORKDIR /app
 
-### `npm run build` fails to minify
+# Copier les fichiers package.json et package-lock.json
+COPY package*.json ./
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+# Installer les dépendances
+RUN npm install
+
+# Copier tout le code source
+COPY . .
+
+# Construire l'application React pour la production
+RUN npm run build
+
+# Utiliser une image légère de Nginx
+FROM nginx:alpine
+
+# Copier les fichiers construits
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Exposer le port 5000
+EXPOSE 5000
+
+# Démarrer Nginx
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+---
+
+## `docker-compose.yml`
+
+```yaml
+version: '3'
+
+services:
+  react-app:
+    build: .
+    ports:
+      - "5000:3000"
+```
+
+---
+
